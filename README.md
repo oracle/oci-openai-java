@@ -49,23 +49,115 @@ allow any-user to use generative-ai-family in compartment <compartment-name> whe
 ## Installation
 All providers in this module are distributed as single jar on the Maven Central
 Repository. The jar is compiled for JDK 17, and is forward compatible with later
-JDK versions. The coordinates for the latest release are:
+JDK versions. The coordinates for the latest release (pending release to maven central) are:
 ```xml
 <dependency>
     <groupId>com.oracle.genai</groupId>
     <artifactId>oci-openai-java-sdk</artifactId>
-    <version>0.1.13</version>
+    <version>0.1.20</version>
 </dependency>
 ```
 
----
+Optionally, the packages can be manually installed in a local maven repository by downloading from [releases page](https://github.com/oracle/oci-openai-java/releases), and running the following command (-sources and -javadoc files are optional):
 
-## Examples
-Examples for OCI OpenAI Java SDK can be found [examples/src/main/java/com/examples/demo](examples/src/main/java/com/examples/demo).
+```bash
+mvn install:install-file \
+-DpomFile=oci-openai-java-sdk-x.y.z.pom \
+-Dfile=oci-openai-java-sdk-x.y.z.jar \
+-Dsources=oci-openai-java-sdk-x.y.z-sources.jar \
+-Djavadoc=oci-openai-java-sdk-x.y.z-javadoc.jar
+```
 
----
+## Usage
 
-### Signers
+### Quick Start
+
+Create a drop-in `OpenAIClient` that targets OCI and send your first text generation request.
+
+```java
+import java.time.Duration;
+import java.util.Objects;
+
+import com.openai.client.OpenAIClient;
+import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseCreateParams;
+import com.oracle.genai.openai.OciOpenAI;
+
+public class QuickStart {
+    private static final String COMPARTMENT_ID = "<YOUR_COMPARTMENT_OCID>";
+
+    public static void main(String[] args) throws Exception {
+        OpenAIClient client = OciOpenAI.builder()
+                .compartmentId(COMPARTMENT_ID)
+                .authType("oci_config")          // or security_token, instance_principal, resource_principal
+                .profile("DEFAULT")              // OCI config profile when using config-based auth
+                .region("us-chicago-1")          // or baseUrl/serviceEndpoint override
+                .timeout(Duration.ofMinutes(2))
+                .logRequestsAndResponses(true)   // optional debug logging
+                .build();
+
+        try {
+            Response response = client.responses().create(ResponseCreateParams.builder()
+                    .model("openai.gpt-4o")
+                    .store(false)
+                    .input(Objects.requireNonNull("Write a short poem about cloud computing."))
+                    .build());
+
+            System.out.println(response.output());
+        } finally {
+            client.close();
+        }
+    }
+}
+```
+
+> - Provide **one** of `region`, `baseUrl`, or `serviceEndpoint` to resolve the OCI Generative AI endpoint.
+
+### Authentication
+
+`OciOpenAI` supports the same OCI IAM flows exposed by the OCI Java SDK through the `authType` value (or you can pass a prebuilt `BasicAuthenticationDetailsProvider` via `authProvider`).
+
+#### 1) OCI Config / Session Token
+
+Use when developing locally with an OCI config file. For session tokens, set `authType` to `security_token`; for long-lived keys use `oci_config`.
+
+```java
+OpenAIClient client = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .conversationStoreId("<CONVERSATION_STORE_OCID>")
+        .authType("security_token")   // or "oci_config"
+        .profile("DEFAULT")
+        .region("us-chicago-1")
+        .build();
+```
+
+#### 2) Resource Principal Authentication
+
+For workloads running in OCI Functions, Container Instances, etc.
+
+```java
+OpenAIClient client = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .authType("resource_principal")
+        .region("us-chicago-1")
+        .build();
+```
+> Ensure the dynamic group bound to the resource principal has policies to call the Generative AI APIs.
+
+#### 3) Instance Principal Authentication
+
+For code running on OCI Compute instances.
+
+```java
+OpenAIClient client = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .authType("instance_principal")
+        .region("us-chicago-1")
+        .build();
+```
+> The instance must belong to a dynamic group that grants access to the Generative AI endpoints.
+
+#### 4) Custom Auth Provider
 
 The library supports multiple OCI authentication methods (signers). Choose the one that matches your runtime environment and security posture.
 
@@ -90,6 +182,74 @@ OpenAIClient openAIClient = OciOpenAI.builder().authType("instance_principal").b
 // 4) User Principal (API key in ~/.oci/config)
 OpenAIClient openAIClient = OciOpenAI.builder().authType("oci_config").build();
 ```
+
+### Client Initialization Parameters
+
+`OciOpenAI.builder()` mirrors the OpenAI Java client while adding OCI routing and headers.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| `compartmentId` | OCID sent as `opc-compartment-id`/`CompartmentId` | ✅ |
+| `authType` or `authProvider` | Authentication mechanism (`oci_config`, `security_token`, `instance_principal`, `resource_principal`, or a `BasicAuthenticationDetailsProvider`) | ✅ |
+| `region` | OCI region short code; auto-derives base URL | ✅<br/>*(unless `baseUrl` or `serviceEndpoint` is set)* |
+| `baseUrl` | Fully qualified endpoint override (includes API path) | ❌ |
+| `serviceEndpoint` | Service endpoint without API path; `/openai/v1` is appended | ❌ |
+| `conversationStoreId` | Optional Conversation Store OCID attached to every call | ❌ |
+| `timeout` | Request timeout (applies to HTTP client and client options) | ❌ |
+| `logRequestsAndResponses` | Print request/response bodies for debugging | ❌ |
+
+### Base URL and endpoint overrides
+
+```java
+// Explicit baseUrl (e.g., dedicated endpoint)
+OpenAIClient client = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .authType("security_token")
+        .profile("DEFAULT")
+        .baseUrl("https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/openai/v1")
+        .build();
+
+// Derive from service endpoint; SDK appends /openai/v1
+OpenAIClient client2 = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .authType("security_token")
+        .profile("DEFAULT")
+        .serviceEndpoint("https://inference.generativeai.us-chicago-1.oci.oraclecloud.com")
+        .build();
+```
+
+### Error Handling
+
+The OpenAI Java SDK exceptions still apply. Catch `NotFoundException`, `UnauthorizedException`, or `BadRequestException` to inspect headers/diagnostics when OCI rejects a call.
+
+```java
+try {
+    // call Responses API
+} catch (NotFoundException | UnauthorizedException | BadRequestException e) {
+    System.out.println(e.headers());
+}
+```
+
+### Cleanup
+
+`OpenAIClient` implements `AutoCloseable`. Close it when finished to release HTTP resources:
+
+```java
+try (OpenAIClient client = OciOpenAI.builder()
+        .compartmentId("<COMPARTMENT_OCID>")
+        .authType("security_token")
+        .region("us-chicago-1")
+        .build()) {
+    // use client
+}
+```
+
+---
+
+## Examples
+Examples for OCI OpenAI Java SDK can be found [examples/src/main/java/com/examples/demo](examples/src/main/java/com/examples/demo).
+
+---
 
 ---
 

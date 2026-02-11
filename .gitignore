@@ -1,0 +1,94 @@
+venv*/
+.venv/
+env/
+.env/
+.oca/
+
+# Build outputs
+abandoned/
+bin/
+build/
+bldenv/
+dist/
+generated-srcs/
+out/
+target/
+tmp/
+
+# OCI build assets
+input_ocibuild/
+output_ocibuild/
+output_ocibuild_compilesource/
+output_ocibuild_dockerize_api/
+output_ocibuild_dockerize_worker/
+output_ocibuild_packagewheel/
+buildDetails.txt
+tmp.txt
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+*.eggs/
+pip-wheel-metadata/
+wheels/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Java artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.jpi
+
+# Maven wrapper & build metadata
+.m2/
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+buildNumber.properties
+dependency-reduced-pom.xml
+pom.xml.next
+pom.xml.releaseBackup
+pom.xml.tag
+pom.xml.versionsBackup
+release.properties
+
+# IDE / editor settings
+.idea/
+.vscode/
+.settings/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.gradle/
+*.swp
+*~
+.envrc
+.python-version
+.history
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Logs & reports
+*.log
+logs/
+violations
+.coverage
+coverage.xml
+htmlcov/

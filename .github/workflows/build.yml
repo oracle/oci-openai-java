@@ -33,43 +33,42 @@ jobs:
           cache: 'maven'
 
       - name: Compute Build Version
+        id: versioning
         run: |
+          # Calculate the patch number: 20 + run_number
+          PATCH=$(( ${{ env.VERSION_OFFSET }} + ${{ github.run_number }} ))
+          
+          # Determine branch name
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             BRANCH="${{ github.head_ref }}"
           else
             BRANCH="${GITHUB_REF#refs/heads/}"
           fi
           
-          SANITIZED_BRANCH=$(echo "$BRANCH" | sed 's/[^A-Za-z0-9]/_/g')
+          # Clean branch name for Maven (alphanumeric only)
+          SAFE_BRANCH=$(echo "$BRANCH" | sed 's/[^A-Za-z0-9]/_/g')
 
+          # Final version string construction
           if [ "$BRANCH" = "main" ]; then
-            VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${GITHUB_RUN_NUMBER}"
+            # Result: 0.1.21
+            VERSION="${{ env.MAJOR_VERSION }}.${{ env.MINOR_VERSION }}.${PATCH}"
           else
-            VERSION="${MAJOR_VERSION}.${MINOR_VERSION}-${SANITIZED_BRANCH}.${GITHUB_RUN_NUMBER}-SNAPSHOT"
+            # Result: 0.1.21-branch_name-SNAPSHOT
+            VERSION="${{ env.MAJOR_VERSION }}.${{ env.MINOR_VERSION }}.${PATCH}-${SAFE_BRANCH}-SNAPSHOT"
           fi
           
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Final Version set to: $VERSION"
 
-      - name: Run Maven Build and Verify
+      - name: Run Maven Build
         run: |
           TOOLCHAINS=""
           if [ -f "${{ env.TOOLCHAINS_PATH }}" ]; then
             TOOLCHAINS="--global-toolchains ${{ env.TOOLCHAINS_PATH }}"
           fi
 
-          # Update the POM version dynamically
-          mvn -B $TOOLCHAINS org.codehaus.mojo:versions-maven-plugin:2.14.2:set -DnewVersion="${{ env.VERSION }}" -DgenerateBackupPoms=false
+          # Set the version in all poms
+          mvn -B $TOOLCHAINS org.codehaus.mojo:versions-maven-plugin:2.14.2:set \
+              -DnewVersion="${{ env.VERSION }}" -DgenerateBackupPoms=false
           
-          # Run the actual build and tests
-          mvn -B $TOOLCHAINS verify
-
-      - name: Upload Build Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: oci-openai-java-sdk-artifacts
-          path: |
-            **/target/*.jar
-            **/target/*.war
-            **/target/*.zip
-            **/target/*.tar.gz
+          mvn -B $TOOLCHAINS clean verify

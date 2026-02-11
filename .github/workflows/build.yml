@@ -12,18 +12,15 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAJOR_VERSION: "0"
-  MINOR_VERSION: "1"
-  VERSION_OFFSET: 20
   TOOLCHAINS_PATH: "build_config/toolchains.xml"
 
 jobs:
   build:
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -32,43 +29,12 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Compute Build Version
-        id: versioning
-        run: |
-          # Calculate the patch number: 20 + run_number
-          PATCH=$(( ${{ env.VERSION_OFFSET }} + ${{ github.run_number }} ))
-          
-          # Determine branch name
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BRANCH="${{ github.head_ref }}"
-          else
-            BRANCH="${GITHUB_REF#refs/heads/}"
-          fi
-          
-          # Clean branch name for Maven (alphanumeric only)
-          SAFE_BRANCH=$(echo "$BRANCH" | sed 's/[^A-Za-z0-9]/_/g')
-
-          # Final version string construction
-          if [ "$BRANCH" = "main" ]; then
-            # Result: 0.1.21
-            VERSION="${{ env.MAJOR_VERSION }}.${{ env.MINOR_VERSION }}.${PATCH}"
-          else
-            # Result: 0.1.21-branch_name-SNAPSHOT
-            VERSION="${{ env.MAJOR_VERSION }}.${{ env.MINOR_VERSION }}.${PATCH}-${SAFE_BRANCH}-SNAPSHOT"
-          fi
-          
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Final Version set to: $VERSION"
-
-      - name: Run Maven Build
+      - name: Verify (Compile & Test)
         run: |
           TOOLCHAINS=""
           if [ -f "${{ env.TOOLCHAINS_PATH }}" ]; then
             TOOLCHAINS="--global-toolchains ${{ env.TOOLCHAINS_PATH }}"
           fi
-
-          # Set the version in all poms
-          mvn -B $TOOLCHAINS org.codehaus.mojo:versions-maven-plugin:2.14.2:set \
-              -DnewVersion="${{ env.VERSION }}" -DgenerateBackupPoms=false
           
+          # build locally and run unit tests
           mvn -B $TOOLCHAINS clean verify

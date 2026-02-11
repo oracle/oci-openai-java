@@ -58,16 +58,6 @@ JDK versions. The coordinates for the latest release (pending release to maven c
 </dependency>
 ```
 
-Optionally, the packages can be manually installed in a local maven repository by downloading from [releases page](https://github.com/oracle/oci-openai-java/releases), and running the following command (-sources and -javadoc files are optional):
-
-```bash
-mvn install:install-file \
--DpomFile=oci-openai-java-sdk-x.y.z.pom \
--Dfile=oci-openai-java-sdk-x.y.z.jar \
--Dsources=oci-openai-java-sdk-x.y.z-sources.jar \
--Djavadoc=oci-openai-java-sdk-x.y.z-javadoc.jar
-```
-
 ## Usage
 
 ### Quick Start

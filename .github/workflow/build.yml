@@ -1,0 +1,75 @@
+name: Build - oci-openai-java-sdk
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-oci-openai-java-sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAJOR_VERSION: "0"
+  MINOR_VERSION: "1"
+  VERSION_OFFSET: 20
+  TOOLCHAINS_PATH: "build_config/toolchains.xml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compute Build Version
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BRANCH="${{ github.head_ref }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          
+          SANITIZED_BRANCH=$(echo "$BRANCH" | sed 's/[^A-Za-z0-9]/_/g')
+
+          if [ "$BRANCH" = "main" ]; then
+            VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${GITHUB_RUN_NUMBER}"
+          else
+            VERSION="${MAJOR_VERSION}.${MINOR_VERSION}-${SANITIZED_BRANCH}.${GITHUB_RUN_NUMBER}-SNAPSHOT"
+          fi
+          
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Run Maven Build and Verify
+        run: |
+          TOOLCHAINS=""
+          if [ -f "${{ env.TOOLCHAINS_PATH }}" ]; then
+            TOOLCHAINS="--global-toolchains ${{ env.TOOLCHAINS_PATH }}"
+          fi
+
+          # Update the POM version dynamically
+          mvn -B $TOOLCHAINS org.codehaus.mojo:versions-maven-plugin:2.14.2:set -DnewVersion="${{ env.VERSION }}" -DgenerateBackupPoms=false
+          
+          # Run the actual build and tests
+          mvn -B $TOOLCHAINS verify
+
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oci-openai-java-sdk-artifacts
+          path: |
+            **/target/*.jar
+            **/target/*.war
+            **/target/*.zip
+            **/target/*.tar.gz

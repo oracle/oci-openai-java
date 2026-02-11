@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF8"?>
+<toolchains>
+    <!-- JDK toolchains plugin requires toolchains.xml file, we are referring this file from ocibuild.conf file -->
+    <toolchain>
+        <type>jdk</type>
+        <provides>
+            <version>17</version>
+        </provides>
+        <configuration>
+            <jdkHome>/usr/lib/jvm/jdk-17.0.1</jdkHome>
+        </configuration>
+    </toolchain>
+</toolchains>

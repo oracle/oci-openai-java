@@ -1,0 +1,40 @@
+name: Build - oci-openai-java-sdk
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-oci-openai-java-sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOOLCHAINS_PATH: "build_config/toolchains.xml"
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Verify (Compile & Test)
+        run: |
+          TOOLCHAINS=""
+          if [ -f "${{ env.TOOLCHAINS_PATH }}" ]; then
+            TOOLCHAINS="--global-toolchains ${{ env.TOOLCHAINS_PATH }}"
+          fi
+          
+          # build locally and run unit tests
+          mvn -B $TOOLCHAINS clean verify

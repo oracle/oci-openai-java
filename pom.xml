@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.oracle.genai</groupId>
     <artifactId>oci-openai-java-sdk</artifactId>
@@ -8,7 +8,25 @@
     <packaging>jar</packaging>
     <name>OCI OpenAI Java SDK</name>
     <description>Helper utilities for using the OpenAI Java SDK against OCI Generative AI endpoints.</description>
-
+    <url>https://github.com/oracle/oci-openai-java</url>
+    <licenses>
+        <license>
+            <name>The Universal Permissive License (UPL), Version 1.0</name>
+            <url>https://oss.oracle.com/licenses/upl/</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>oracle</id>
+            <name>Oracle</name>
+            <organizationUrl>https://www.oracle.com</organizationUrl>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/oracle/oci-openai-java</url>
+        <connection>scm:git:git@github.com:oracle/oci-openai-java.git</connection>
+        <developerConnection>scm:git:git@github.com:oracle/oci-openai-java.git</developerConnection>
+    </scm>
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -100,7 +118,46 @@
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
-
+            <!-- Plugin to generate sources jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Plugin to generate javadoc jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <!-- Add LICENSE.txt from the root directory -->
+                    <include>LICENSE.txt</include>
+                    <!-- Add THIRD_PARTY_LICENSES.txt from the root directory -->
+                    <include>THIRD_PARTY_LICENSES.txt</include>
+                </includes>
+                <targetPath>META-INF</targetPath>
+            </resource>
+        </resources>
     </build>
 </project>

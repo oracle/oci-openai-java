@@ -8,14 +8,21 @@ The **OCI OpenAI Java** library provides secure and convenient access to the Ope
 
 ## Table of Contents
 - [oci-openai-java](#oci-openai-java)
-    - [Table of Contents](#table-of-contents)
-    - [Before You Start](#before-you-start)
-    - [Installation](#installation)
-    - [Examples](#examples)
-        - [Signers](#signers)
-    - [Contributing](#contributing)
-    - [Security](#security)
-    - [License](#license)
+  - [Table of Contents](#table-of-contents)
+  - [Before You Start](#before-you-start)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Quick Start](#quick-start)
+    - [Authentication](#authentication)
+    - [Client Initialization Parameters](#client-initialization-parameters)
+    - [Base URL and endpoint overrides](#base-url-and-endpoint-overrides)
+    - [Error Handling](#error-handling)
+    - [Cleanup](#cleanup)
+  - [Examples](#examples)
+  - [Third-Party APIs](#third-party-apis)
+  - [Contributing](#contributing)
+  - [Security](#security)
+  - [License](#license)
 
 ---
 

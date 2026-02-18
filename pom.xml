@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.oracle.genai</groupId>
     <artifactId>oci-openai-java-sdk</artifactId>
@@ -17,8 +17,15 @@
     </licenses>
     <developers>
         <developer>
-            <id>oracle</id>
-            <name>Oracle</name>
+            <name>Sudipta Borah</name>
+            <email>sudipta.borah@oracle.com</email>
+            <organization>Oracle</organization>
+            <organizationUrl>https://www.oracle.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Samarjit Pal</name>
+            <email>samarjit.pal@oracle.com</email>
+            <organization>Oracle</organization>
             <organizationUrl>https://www.oracle.com</organizationUrl>
         </developer>
     </developers>
@@ -108,6 +115,37 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <pomElements>
+                        <name/>
+                        <description/>
+                        <url/>
+                        <scm/>
+                        <developers/>
+                    </pomElements>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- existing plugins (compiler, etc) stay here -->
 
             <plugin>

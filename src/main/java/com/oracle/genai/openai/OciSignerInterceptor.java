@@ -6,6 +6,8 @@ package com.oracle.genai.openai;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jetbrains.annotations.NotNull;
@@ -16,7 +18,9 @@ import com.oracle.bmc.http.signing.DefaultRequestSigner;
 import com.oracle.bmc.http.signing.RequestSigner;
 
 import okhttp3.Interceptor;
+import okhttp3.MediaType;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
@@ -46,6 +50,11 @@ public class OciSignerInterceptor implements Interceptor {
     public Response intercept(Chain chain) throws IOException {
         Request originalRequest = chain.request();
 
+        // OCI signing expects Content-Type to be present for certain request types (notably multipart)
+        // so we ensure it is part of the header map passed into the signer.
+        Map<String, List<String>> headersForSigning = new LinkedHashMap<>(originalRequest.headers().toMultimap());
+        ensureContentTypeHeader(headersForSigning, originalRequest.body(), originalRequest.header("Content-Type"));
+
         DuplicatableInputStream bodyStream = null;
         if (originalRequest.body() != null) {
             okio.Buffer buffer = new okio.Buffer();
@@ -56,7 +65,7 @@ public class OciSignerInterceptor implements Interceptor {
         Map<String, String> signedHeaders = this.signer.signRequest(
                 URI.create(originalRequest.url().toString()),
                 originalRequest.method(),
-                originalRequest.headers().toMultimap(),
+                headersForSigning,
                 bodyStream
         );
 
@@ -65,5 +74,27 @@ public class OciSignerInterceptor implements Interceptor {
             newRequestBuilder.header(entry.getKey(), entry.getValue());
         }
         return chain.proceed(newRequestBuilder.build());
+    }
+
+    private static void ensureContentTypeHeader(
+            Map<String, List<String>> headers,
+            RequestBody body,
+            String existingContentType
+    ) {
+        if (headers.containsKey("content-type") || headers.containsKey("Content-Type")) {
+            return;
+        }
+
+        String contentTypeValue = existingContentType;
+        if ((contentTypeValue == null || contentTypeValue.isBlank()) && body != null) {
+            MediaType mediaType = body.contentType();
+            if (mediaType != null) {
+                contentTypeValue = mediaType.toString();
+            }
+        }
+
+        if (contentTypeValue != null && !contentTypeValue.isBlank()) {
+            headers.put("content-type", List.of(contentTypeValue));
+        }
     }
 }

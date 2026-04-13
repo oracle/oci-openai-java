@@ -4,8 +4,8 @@
  */
 package com.oracle.genai.openai;
 
-import java.io.IOException;
 import java.io.InputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -29,6 +29,7 @@ import okhttp3.Callback;
 import okhttp3.Dispatcher;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -273,6 +274,16 @@ public final class OciHttpClient implements HttpClient {
      * @return an OkHttp body that streams data to the network
      */
     private RequestBody toRequestBody(HttpRequestBody requestBody) {
+        // The OpenAI Java SDK represents multipart bodies as an anonymous class:
+        // com.openai.core.http.HttpRequestBodies$multipartFormData$1
+        // If we wrap that in a generic RequestBody, OkHttp will treat it as a single-shot
+        // streaming body and we lose multipart semantics (esp. boundary handling).
+        //
+        // For OCI file uploads we must provide an OkHttp MultipartBody.
+        if (isMultipartFormData(requestBody)) {
+            return toMultipartBody(requestBody);
+        }
+
         MediaType mediaType = null;
         String contentType = requestBody.contentType();
         if (contentType != null && !contentType.isBlank()) {
@@ -300,6 +311,76 @@ public final class OciHttpClient implements HttpClient {
                 requestBody.writeTo(sink.outputStream());
             }
         };
+    }
+
+    private boolean isMultipartFormData(HttpRequestBody requestBody) {
+        // Prefer a behavior-based detection rather than relying on a Kotlin anonymous class name,
+        // which may change across OpenAI SDK versions.
+        //
+        // Multipart form uploads always use multipart/form-data and include a boundary parameter.
+        String contentType = requestBody.contentType();
+        if (contentType == null || contentType.isBlank()) {
+            return false;
+        }
+
+        MediaType mediaType = MediaType.parse(contentType);
+        if (mediaType == null) {
+            return false;
+        }
+        if (!"multipart".equalsIgnoreCase(mediaType.type())
+                || !"form-data".equalsIgnoreCase(mediaType.subtype())) {
+            return false;
+        }
+        String boundary = mediaType.parameter("boundary");
+        return boundary != null && !boundary.isBlank();
+    }
+
+    private RequestBody toMultipartBody(HttpRequestBody requestBody) {
+        // We don’t have direct access to the individual multipart fields from the SDK abstraction,
+        // but the SDK’s multipart body can stream the fully-encoded multipart payload (including
+        // boundary) via HttpRequestBody.writeTo(OutputStream).
+        //
+        // To give OkHttp correct multipart semantics (esp. Content-Type with boundary), we first
+        // buffer the encoded payload and then create a MultipartBody with the same boundary.
+        //
+        // Note: This trades streaming for correctness. File uploads in this SDK are typically
+        // small enough, and OCI signing requires correct Content-Type.
+        String contentType = requestBody.contentType();
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("Multipart request body is missing content type");
+        }
+
+        MediaType mediaType = MediaType.parse(contentType);
+        if (mediaType == null) {
+            throw new IllegalArgumentException("Invalid multipart content type: " + contentType);
+        }
+
+        String boundary = mediaType.parameter("boundary");
+        if (boundary == null || boundary.isBlank()) {
+            throw new IllegalArgumentException("Multipart content type is missing boundary: " + contentType);
+        }
+
+        okio.Buffer buffer = new okio.Buffer();
+        try {
+            // okio.Buffer implements BufferedSink, which exposes outputStream() directly.
+            requestBody.writeTo(buffer.outputStream());
+        } catch (RuntimeException e) {
+            throw new OpenAIIoException("Failed to serialize multipart request body", e);
+        }
+
+        // IMPORTANT:
+        // The OpenAI SDK has already produced the *entire* encoded multipart payload (including
+        // boundaries, per-part headers, and CRLF framing). If we wrap that as an OkHttp MultipartBody
+        // part, OkHttp will create a *nested multipart*: an outer multipart whose single part is the
+        // already-encoded inner multipart. That leads to confusing logs like:
+        //   content-type: multipart/form-data; boundary=...
+        //   --boundary
+        //   Content-Type: multipart/form-data; boundary=...   <-- inner/nested
+        //
+        // Instead, send the raw encoded bytes as a plain RequestBody while preserving the exact
+        // Content-Type (incl. boundary). This keeps the wire format correct (single multipart) and
+        // allows OCI signing to include the right content-type.
+        return RequestBody.create(buffer.readByteArray(), mediaType);
     }
 
     /**

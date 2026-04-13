@@ -1,4 +1,14 @@
-# OCI OpenAI SDK for java
+# [DEPRECATED] OCI OpenAI SDK for java
+
+This library is no longer maintained. You should use official [OpenAI SDK](https://developers.openai.com/api/docs/libraries), not the [OCI SDK](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdks.htm) nor the legacy [OCI OpenAI SDK](https://github.com/oracle-samples/oci-openai), to invoke the Responses API. Ensure you have the latest version of the OpenAI SDK installed.
+
+If you need IAM Auth, use the below in conjunction with OpenAI SDK.
+- Python [https://github.com/oracle-samples/oci-genai-auth-python](https://github.com/oracle-samples/oci-genai-auth-python)
+- Java [https://github.com/oracle-samples/oci-genai-auth-java](https://github.com/oracle-samples/oci-genai-auth-java)
+
+If you have been using the legacy OCI OpenAI SDK below prior to our GA release, we will continue to support that.
+- [https://github.com/oracle-samples/oci-openai](https://github.com/oracle-samples/oci-openai)
+- [https://github.com/oracle/oci-openai-java](https://github.com/oracle/oci-openai-java)
 
 ## About
 
